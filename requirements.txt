@@ -1,0 +1,8 @@
+flask
+fpdf
+google-generativeai
+python-dotenv
+arabic-reshaper
+python-bidi
+requests
+gunicorn

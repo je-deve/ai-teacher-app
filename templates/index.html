@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام التقييم | Generations Abilities Schools</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary-brown: #5D4037;
+      --gold-dark: #B8860B;
+      --gold-light: #F2D06B;
+      --gold-gradient: linear-gradient(135deg, #D4AF37, #F2D06B);
+      --bg-color: #ffffff;
+      --navbar-height: 80px;
+    }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding-top: calc(var(--navbar-height) + 20px);
+      color: var(--primary-brown);
+    }
+
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--navbar-height);
+      background: white;
+      border-bottom: 3px solid var(--gold-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .nav-logo { height: 60px; width: auto; }
+    .school-name { font-size: 20px; font-weight: 700; color: var(--primary-brown); }
+
+    .nav-links a{
+      text-decoration:none;
+      font-weight:700;
+      color: var(--primary-brown);
+      margin: 0 8px;
+    }
+
+    .container { display: flex; justify-content: center; padding: 20px; }
+
+    .card {
+      background: white;
+      width: 100%; max-width: 600px;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(93, 64, 55, 0.1);
+      border: 1px solid #eee;
+      text-align: center;
+    }
+
+    h2 { color: var(--primary-brown); margin-bottom: 30px; }
+
+    .input-group { margin-bottom: 20px; text-align: right; }
+    .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--primary-brown); }
+
+    input[type="text"], textarea {
+      width: 100%; padding: 14px;
+      border: 2px solid #E0E0E0;
+      border-radius: 10px;
+      font-family: 'Cairo'; font-size: 15px;
+      background: #FAFAFA;
+      transition: 0.3s;
+      box-sizing: border-box;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--gold-dark);
+      background: white;
+      outline: none;
+      box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+    }
+
+    textarea { height: 100px; resize: none; }
+
+    .tabs-container {
+      background: #F5F5F5;
+      padding: 5px;
+      border-radius: 12px;
+      display: flex;
+      margin-bottom: 25px;
+    }
+
+    .tab-btn {
+      flex: 1; padding: 12px; border: none; background: transparent;
+      border-radius: 8px; cursor: pointer;
+      font-family: 'Cairo'; font-weight: 600; color: #757575;
+      transition: 0.3s;
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: var(--primary-brown);
+      border: 1px solid var(--gold-dark);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .action-btn {
+      width: 100%; padding: 15px; border: none; border-radius: 12px;
+      font-family: 'Cairo'; font-weight: 700; font-size: 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: transform 0.2s, opacity 0.2s;
+      color: white;
+    }
+
+    .btn-record { background: #D32F2F; }
+    .btn-stop { background: #212121; }
+
+    .btn-main {
+      background: var(--gold-gradient);
+      color: var(--primary-brown);
+      margin-top: 25px;
+      box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+    }
+
+    .action-btn:hover { opacity: 0.95; transform: translateY(-2px); }
+
+    .upload-area {
+      border: 2px dashed #D7CCC8;
+      border-radius: 12px; padding: 30px;
+      cursor: pointer; transition: 0.3s; position: relative;
+      background: #FFFCF2;
+    }
+    .upload-area:hover {
+      border-color: var(--gold-dark);
+      background: #FFF8E1;
+    }
+    .upload-icon { font-size: 28px; color: var(--gold-dark); margin-bottom: 10px; }
+    .upload-area input { position: absolute; width: 100%; height: 100%; top:0; left:0; opacity: 0; cursor: pointer; }
+
+    .hidden { display: none !important; }
+    .timer { font-size: 24px; font-weight: bold; color: var(--gold-dark); margin: 15px 0; display: none; }
+    .status-box { margin-top: 15px; font-size: 14px; font-weight: 600; }
+    .status-loading { color: var(--gold-dark); }
+    .status-success { color: #388E3C; }
+    .status-error { color: #D32F2F; }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <div style="display:flex;align-items:center;gap:15px;">
+      <img src="/static/logo.png" alt="Logo" class="nav-logo">
+      <div class="nav-links">
+        <a href="/arabic">العربية</a> |
+        <a href="/english">English</a> |
+        <a href="/">الرئيسية</a>
+      </div>
+    </div>
+    <div>
+      <span class="school-name">مدارس قدرات الأجيال العالمية</span>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2>نظام التقييم الصوتي الذكي</h2>
+
+      <div class="input-group">
+        <label>اسم الطالب:</label>
+        <input type="text" id="studentName" placeholder="أدخل اسم الطالب">
+      </div>
+
+      <div class="input-group">
+        <label>النص المرجعي:</label>
+        <textarea id="refText" placeholder="اكتب النص الذي سيقرأه الطالب هنا..."></textarea>
+      </div>
+
+      <div class="tabs-container">
+        <button class="tab-btn active" onclick="switchTab(event,'record')">
+          <i class="fa-solid fa-microphone"></i> تسجيل مباشر
+        </button>
+        <button class="tab-btn" onclick="switchTab(event,'upload')">
+          <i class="fa-solid fa-cloud-arrow-up"></i> رفع ملف
+        </button>
+      </div>
+
+      <div id="recordSection">
+        <button id="startBtn" class="action-btn btn-record" onclick="startRecording()">
+          <i class="fa-solid fa-circle"></i> اضغط لبدء التسجيل
+        </button>
+
+        <button id="stopBtn" class="action-btn btn-stop hidden" onclick="stopRecording()">
+          <i class="fa-solid fa-stop"></i> إنهاء التسجيل
+        </button>
+
+        <div id="timer" class="timer">00:00</div>
+      </div>
+
+      <div id="uploadSection" class="hidden">
+        <div class="upload-area">
+          <input type="file" id="fileInput" accept="audio/*" onchange="handleFileSelect()">
+          <i class="fa-solid fa-file-audio upload-icon"></i>
+          <div id="fileName">اضغط هنا لاختيار ملف صوتي (MP3/WAV)</div>
+        </div>
+      </div>
+
+      <audio id="audioPreview" controls style="width:100%; margin-top:20px; display:none; border-radius:10px;"></audio>
+
+      <button id="analyzeBtn" class="action-btn btn-main" onclick="analyze()">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> تحليل وإصدار التقرير
+      </button>
+
+      <div id="status" class="status-box"></div>
+    </div>
+  </div>
+
+<script>
+let mediaRecorder, audioChunks = [], audioBlob = null;
+let mode = 'record';
+let timerInterval, startTime;
+
+function switchTab(ev, selected) {
+  mode = selected;
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  ev.currentTarget.classList.add('active');
+
+  if (selected === 'record') {
+    document.getElementById('recordSection').classList.remove('hidden');
+    document.getElementById('uploadSection').classList.add('hidden');
+  } else {
+    document.getElementById('recordSection').classList.add('hidden');
+    document.getElementById('uploadSection').classList.remove('hidden');
+  }
+
+  document.getElementById('audioPreview').style.display = 'none';
+  document.getElementById('status').innerText = '';
+}
+
+function handleFileSelect() {
+  const input = document.getElementById('fileInput');
+  const fileNameDiv = document.getElementById('fileName');
+  const audio = document.getElementById('audioPreview');
+
+  if (input.files.length > 0) {
+    fileNameDiv.innerText = "✅ تم اختيار: " + input.files[0].name;
+    fileNameDiv.style.color = "#5D4037";
+    fileNameDiv.style.fontWeight = "bold";
+
+    audio.src = URL.createObjectURL(input.files[0]);
+    audio.style.display = 'block';
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.start();
+    audioChunks = [];
+    audioBlob = null;
+
+    startTime = Date.now();
+    document.getElementById('timer').style.display = 'block';
+    timerInterval = setInterval(() => {
+      let diff = Math.floor((Date.now() - startTime) / 1000);
+      let m = Math.floor(diff / 60).toString().padStart(2, '0');
+      let s = (diff % 60).toString().padStart(2, '0');
+      document.getElementById('timer').innerText = `${m}:${s}`;
+    }, 1000);
+
+    document.getElementById('startBtn').classList.add('hidden');
+    document.getElementById('stopBtn').classList.remove('hidden');
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+    mediaRecorder.onstop = () => {
+      clearInterval(timerInterval);
+      document.getElementById('timer').style.display = 'none';
+
+      audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+      const audio = document.getElementById('audioPreview');
+      audio.src = URL.createObjectURL(audioBlob);
+      audio.style.display = 'block';
+
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+  } catch (err) {
+    alert("تأكد من السماح للمايكروفون");
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  document.getElementById('startBtn').classList.remove('hidden');
+  document.getElementById('stopBtn').classList.add('hidden');
+}
+
+async function analyze() {
+  const name = document.getElementById('studentName').value.trim();
+  const text = document.getElementById('refText').value.trim();
+  const status = document.getElementById('status');
+  const btn = document.getElementById('analyzeBtn');
+
+  if (!name || !text) {
+    status.innerText = "⚠️ يرجى تعبئة جميع الحقول";
+    status.className = "status-box status-error";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("name", name);
+  formData.append("ref_text", text);
+
+  if (mode === 'record') {
+    if (!audioBlob) {
+      status.innerText = "⚠️ يرجى تسجيل الصوت أولاً";
+      status.className = "status-box status-error";
+      return;
+    }
+    formData.append("audio_record", audioBlob, "rec.wav");
+  } else {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput.files.length === 0) {
+      status.innerText = "⚠️ يرجى اختيار ملف";
+      status.className = "status-box status-error";
+      return;
+    }
+    formData.append("audio_upload", fileInput.files[0]);
+  }
+
+  status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحليل...';
+  status.className = "status-box status-loading";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch("/analyze", { method: "POST", body: formData });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Report_AR_${name}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      status.innerText = "✅ تم إصدار التقرير";
+      status.className = "status-box status-success";
+    } else {
+      const msg = await res.text();
+      status.innerText = "❌ فشل التحليل: " + msg;
+      status.className = "status-box status-error";
+    }
+  } catch (e) {
+    status.innerText = "❌ خطأ اتصال بالسيرفر";
+    status.className = "status-box status-error";
+  }
+
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
