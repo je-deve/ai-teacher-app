@@ -1,5 +1,5 @@
 flask
-fpdf
+fpdf2
 google-generativeai
 python-dotenv
 arabic-reshaper
