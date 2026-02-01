@@ -239,9 +239,9 @@ class ArabicPDF(BasePDF):
         self.ln(5)
     def footer(self):
         self.set_y(-15)
-        try:
-            self.set_font('Amiri','',10)
-        except:
+        try: 
+            self.set_font('Amiri','',10) 
+        except: 
             pass
         self.set_text_color(128,128,128)
         self.cell(0,10,ar(f"صفحة {self.page_no()}"),0,0,'C')
@@ -274,7 +274,7 @@ class EnglishPDF(BasePDF):
 def gemini_analyze_audio(path, ref_text, lang="ar"):
     try:
         myfile = genai.upload_file(path)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         if lang == "ar":
             # البرومبت العربي: يطلب كلمة للبادج
