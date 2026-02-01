@@ -299,11 +299,14 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
         model = genai.GenerativeModel("gemini-2.5-flash")
         
         if lang == "ar":
+            # البرومبت العربي: توجيه بالرفق مع الأطفال
             prompt = f"""
-            أنت خبير تربوي. النص المرجعي: "{ref_text}"
+            أنت معلم لغة عربية خبير في تقييم الأطفال. النص المرجعي: "{ref_text}"
             
-            1. قيّم القراءة بدقة.
-            2. حدد "التقييم العام" باختيار كلمة واحدة فقط من القائمة التالية: (عالي، متوسط، ضعيف).
+            1. (الملاحظات والدرجات): كن صادقاً ودقيقاً جداً في رصد الأخطاء والدرجات.
+            2. (التقييم العام): ضع في اعتبارك أن الطالب "طفل". كن متساهلاً ومشجعاً عند اختيار المستوى العام.
+            
+            اختر "التقييم العام" بكلمة واحدة فقط من: (عالي، متوسط، ضعيف).
 
             التنسيق (التزم به):
             الوعي الصوتي|__/25
@@ -320,12 +323,14 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
             - (نقطة)
             """
         else:
+            # English Prompt: Be lenient for kids
             prompt = f"""
-            Professional English teacher. Ref: "{ref_text}"
+            You are an expert English teacher evaluating a CHILD. Ref: "{ref_text}"
             
-            Task: 
-            1. Score the reading.
-            2. Set "Overall Level" to one of: (High, Medium, Low).
+            1. (Scores & Notes): Be honest and precise about specific errors.
+            2. (Overall Level): Be LENIENT and ENCOURAGING because it is a child. 
+            
+            Choose "Overall Level" from: (High, Medium, Low).
             
             IMPORTANT: Use simple text only. No IPA symbols.
 
@@ -557,12 +562,14 @@ def analyze_en():
         pdf.ln(18)
 
         if ref_text:
+            # FIX: SPLIT TRY/EXCEPT
             try: 
                 pdf.set_font("AmiriB","",12)
             except: 
                 pass
             pdf.set_text_color(101,67,33)
             pdf.cell(0,8,"Reference Text:",0,1,'L')
+            # FIX: SPLIT TRY/EXCEPT
             try: 
                 pdf.set_font("Amiri","",11)
             except: 
@@ -573,6 +580,7 @@ def analyze_en():
             pdf.ln(8)
 
         if scores_data:
+            # FIX: SPLIT TRY/EXCEPT
             try: 
                 pdf.set_font("AmiriB","",14)
             except: 
@@ -581,6 +589,7 @@ def analyze_en():
             pdf.cell(0,10,"Assessment Scores:",0,1,'L')
             pdf.ln(2)
             pdf.set_fill_color(184,134,11); pdf.set_text_color(255,255,255)
+            # FIX: SPLIT TRY/EXCEPT
             try: 
                 pdf.set_font("AmiriB","",12)
             except: 
@@ -588,6 +597,7 @@ def analyze_en():
             pdf.cell(130,10,"Criteria",1,0,'L',1)
             pdf.cell(60,10,"Score",1,1,'C',1)
             pdf.set_text_color(0,0,0)
+            # FIX: SPLIT TRY/EXCEPT
             try: 
                 pdf.set_font("Amiri","",12)
             except: 
@@ -604,6 +614,7 @@ def analyze_en():
             pdf.ln(12)
 
         if any(notes.values()):
+            # FIX: SPLIT TRY/EXCEPT
             try: 
                 pdf.set_font("AmiriB","",14)
             except: 
