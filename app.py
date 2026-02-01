@@ -49,10 +49,9 @@ def ar(text):
     try: return get_display(arabic_reshaper.reshape(text))
     except: return text
 
-# --- دالة التنظيف (الحل الجذري للمشكلة) ---
+# --- تنظيف النصوص الإنجليزية فقط ---
 def clean_en(text):
     if not text: return ""
-    # يحول أي رمز غير لاتيني إلى ؟ لمنع الانهيار
     return text.encode('latin-1', 'replace').decode('latin-1')
 
 def get_wrapped_lines(pdf, text, max_width_mm, font_size=12, is_arabic=True):
@@ -83,10 +82,9 @@ def get_wrapped_lines(pdf, text, max_width_mm, font_size=12, is_arabic=True):
         
     return lines
 
-# دالة التفاف الإنجليزي (مع التنظيف)
 def get_english_wrapped_lines(pdf, text, max_width_mm, font_size=11):
     pdf.set_font("Arial", "", font_size)
-    text = clean_en(text) # تنظيف النص هنا
+    text = clean_en(text) # تنظيف للإنجليزي فقط
     words = text.split()
     lines = []; current_line = []
     
@@ -113,12 +111,10 @@ def draw_dynamic_row(pdf, title, content_points, lang='ar'):
     
     for p in clean_points:
         bullet = "• " if is_ar else "- "
-        # نستخدم دالة الالتفاف المناسبة
         if is_ar:
              wrapped = get_wrapped_lines(pdf, bullet + p, col_content_w - (padding*2), 11, True)
         else:
              wrapped = get_english_wrapped_lines(pdf, bullet + p, col_content_w - (padding*2), 11)
-             
         final_content_lines.extend(wrapped)
     
     content_h = (len(final_content_lines) * line_h) + (padding * 2)
@@ -166,8 +162,12 @@ def draw_dynamic_row(pdf, title, content_points, lang='ar'):
 
 def draw_level_badge(pdf, level_text, x, y, lang='ar'):
     try:
-        # تنظيف النص
-        level = clean_en(level_text).replace('%','').replace('|','').strip()
+        # --- التعديل هنا: عدم تنظيف النص إذا كان عربياً ---
+        if lang == 'ar':
+            level = level_text.replace('%','').replace('|','').strip()
+        else:
+            level = clean_en(level_text).replace('%','').replace('|','').strip()
+            
         if not level: level = "متوسط" if lang=='ar' else "Medium"
 
         # اختيار اللون
@@ -205,9 +205,9 @@ def draw_level_badge(pdf, level_text, x, y, lang='ar'):
         if lang == 'ar':
             try: pdf.set_font('AmiriB', '', font_size)
             except: pass
-            level_disp = ar(level)
+            level_disp = ar(level) # معالجة العربي للعرض الصحيح
         else:
-            try: pdf.set_font('AmiriB', '', font_size) # استخدام Amiri للأمان
+            try: pdf.set_font('AmiriB', '', font_size)
             except: pdf.set_font('Arial', 'B', font_size)
             level_disp = level
 
@@ -240,8 +240,10 @@ class ArabicPDF(BasePDF):
         self.ln(5)
     def footer(self):
         self.set_y(-15)
-        try: self.set_font('Amiri','',10)
-        except: pass
+        try:
+            self.set_font('Amiri','',10)
+        except:
+            pass
         self.set_text_color(128,128,128); self.cell(0,10,ar(f"صفحة {self.page_no()}"),0,0,'C')
 
 class EnglishPDF(BasePDF):
@@ -261,8 +263,10 @@ class EnglishPDF(BasePDF):
         self.ln(8)
     def footer(self):
         self.set_y(-15)
-        try: self.set_font('Amiri','',10)
-        except: self.set_font('Arial','',10)
+        try:
+            self.set_font('Amiri','',10)
+        except:
+            self.set_font('Arial','',10)
         self.set_text_color(128,128,128); self.cell(0,10,f"Page {self.page_no()}",0,0,'C')
 
 # ================== AI Logic ==================
@@ -272,6 +276,7 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
         model = genai.GenerativeModel("gemini-2.5-flash")
         
         if lang == "ar":
+            # البرومبت العربي
             prompt = f"""
             أنت خبير تربوي. النص المرجعي: "{ref_text}"
             
@@ -293,6 +298,7 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
             - (نقطة)
             """
         else:
+            # English Prompt
             prompt = f"""
             Professional English teacher. Ref: "{ref_text}"
             
@@ -360,8 +366,7 @@ def analyze_ar():
             if '|' in clean:
                 parts = clean.split('|')
                 if len(parts) >= 2:
-                    k = parts[0].strip()
-                    v = parts[1].strip()
+                    k, v = parts[0].strip(), parts[1].strip()
                     if "التقييم العام" in k:
                         overall_level = v
                     elif any(x in k for x in ["الوعي", "المقاطع", "الكلمات", "الطلاقة"]):
@@ -375,6 +380,7 @@ def analyze_ar():
         pdf = ArabicPDF()
         pdf.add_page()
         
+        # BADGE
         draw_level_badge(pdf, overall_level, x=35, y=pdf.get_y()+8, lang='ar')
 
         try: pdf.set_font('Amiri', '', 14)
