@@ -5,6 +5,7 @@ from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 import warnings
 import traceback
+import re # مكتبة للبحث في النصوص
 
 # إخفاء التحذيرات
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -93,6 +94,7 @@ def draw_smart_table_row(pdf, title, content_points):
             final_lines.extend(wrapped)
             
     total_h = (len(final_lines) * line_height) + 8
+    if total_h < 20: total_h = 20 # Minimum height
     if pdf.get_y() + total_h > 275: pdf.add_page()
     
     start_y = pdf.get_y()
@@ -120,7 +122,6 @@ def draw_smart_table_row(pdf, title, content_points):
     pdf.set_y(start_y + total_h); pdf.ln(3)
 
 def draw_styled_english_row(pdf, title, content_points):
-    # (Same logic for English table)
     if not content_points: return
     col_title = 45; col_content = 145; lh = 7
     lines = []
@@ -129,6 +130,7 @@ def draw_styled_english_row(pdf, title, content_points):
         if clean: lines.extend(get_english_wrapped_lines(pdf, "- "+clean, col_content-6, 11))
     
     h = (len(lines) * lh) + 8
+    if h < 20: h = 20
     if pdf.get_y() + h > 275: pdf.add_page()
     y = pdf.get_y()
     
@@ -146,57 +148,55 @@ def draw_styled_english_row(pdf, title, content_points):
     pdf.set_y(y + h); pdf.ln(3)
 
 def draw_overall_badge(pdf, level_text, x, y, lang='ar'):
-    # Clean up the level text
-    level = level_text.replace('%', '').replace(':', '').strip()
-    
-    # 1. Choose Color based on keywords
-    # Gold (Best)
-    if any(w in level for w in ['High', 'مبدع', 'متميز', 'Excellent']):
-        pdf.set_fill_color(218, 165, 32) # Goldenrod
-    # Silver (Middle)
-    elif any(w in level for w in ['Medium', 'متقدم', 'Good', 'جيد']):
-        pdf.set_fill_color(192, 192, 192) # Silver
-    # Bronze/Red (Needs Work)
-    else:
-        pdf.set_fill_color(205, 127, 50) # Bronze
+    try:
+        # Clean up the level text
+        level = level_text.replace('%', '').replace(':', '').replace('|', '').strip()
+        if not level: level = "جيد" if lang=='ar' else "Good"
 
-    # 2. Draw Circle
-    pdf.set_draw_color(101, 67, 33)
-    pdf.set_line_width(0.5)
-    pdf.circle(x, y, 16, 'FD') # Increased radius slightly
-    
-    # 3. Draw Top Title "Overall"
-    pdf.set_text_color(101, 67, 33)
-    if lang == 'ar':
-        try: pdf.set_font('AmiriB', '', 11)
-        except: pdf.set_font('Arial', 'B', 10)
-        title = ar("المستوى")
-    else:
-        pdf.set_font('Arial', 'B', 9)
-        title = "Level"
+        # 1. Choose Color
+        if any(w in level for w in ['High', 'مبدع', 'متميز', 'Excellent']):
+            pdf.set_fill_color(218, 165, 32) # Gold
+        elif any(w in level for w in ['Medium', 'متقدم', 'Good', 'جيد', 'متوسط']):
+            pdf.set_fill_color(192, 192, 192) # Silver
+        else:
+            pdf.set_fill_color(205, 127, 50) # Bronze
+
+        # 2. Draw Circle
+        pdf.set_draw_color(101, 67, 33)
+        pdf.set_line_width(0.5)
+        pdf.circle(x, y, 16, 'FD')
         
-    pdf.set_xy(x - 15, y - 25)
-    pdf.cell(30, 6, title, 0, 0, 'C')
+        # 3. Draw Title
+        pdf.set_text_color(101, 67, 33)
+        if lang == 'ar':
+            try: pdf.set_font('AmiriB', '', 11)
+            except: pdf.set_font('Arial', 'B', 10)
+            title = ar("المستوى")
+        else:
+            pdf.set_font('Arial', 'B', 9)
+            title = "Level"
+            
+        pdf.set_xy(x - 15, y - 25)
+        pdf.cell(30, 6, title, 0, 0, 'C')
 
-    # 4. Draw The Level Word inside
-    pdf.set_text_color(255, 255, 255)
-    
-    # Auto-resize font if word is long
-    font_size = 14
-    if len(level) > 10: font_size = 9
-    elif len(level) > 6: font_size = 11
-    
-    if lang == 'ar':
-        try: pdf.set_font('AmiriB', '', font_size)
-        except: pass
-        level_display = ar(level)
-    else:
-        pdf.set_font('Arial', 'B', font_size)
-        level_display = level
+        # 4. Draw Text
+        pdf.set_text_color(255, 255, 255)
+        font_size = 14
+        if len(level) > 10: font_size = 9
+        elif len(level) > 6: font_size = 11
+        
+        if lang == 'ar':
+            try: pdf.set_font('AmiriB', '', font_size)
+            except: pass
+            level_display = ar(level)
+        else:
+            pdf.set_font('Arial', 'B', font_size)
+            level_display = level
 
-    # Center text in circle
-    pdf.set_xy(x - 15, y - 5)
-    pdf.cell(30, 10, level_display, 0, 0, 'C')
+        pdf.set_xy(x - 15, y - 5)
+        pdf.cell(30, 10, level_display, 0, 0, 'C')
+    except:
+        pass # If drawing fails, don't crash the app
 
 # ================== PDF Classes ==================
 class BasePDF(FPDF):
@@ -242,17 +242,16 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
         
         if lang == "ar":
             prompt = f"""
-            أنت معلم أطفال مشجع. النص: "{ref_text}"
+            أنت معلم أطفال داعم. النص: "{ref_text}"
             
-            المطلوب:
-            1. اختر "التقييم العام" بكلمة واحدة فقط من: (مبدع، متميز، متقدم، يحتاج للمساعدة).
-            2. استخدم التنسيق التالي بدقة:
+            تعليمات الدرجات (اختر واحدة): (مبدع، متميز، متقدم، جيد).
             
+            التنسيق المطلوب:
             الوعي الصوتي|__/25
             قراءة المقاطع|__/24
             الكلمات الشائعة|__/20
             الطلاقة القرائية|__
-            التقييم العام|مبدع
+            التقييم العام|(الكلمة المختارة)
 
             [تحليل الأخطاء]
             - (نقطة)
@@ -263,18 +262,17 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
             """
         else:
             prompt = f"""
-            Encouraging teacher. Ref: "{ref_text}"
+            Supportive teacher. Ref: "{ref_text}"
             
-            Task:
-            1. Set "Overall Level" to one of: (High, Medium, Low).
-            2. Strict format:
+            Task: Choose "Overall Level" from: (High, Medium, Low).
             
+            Strict Format:
             SCORES_START
             Pronunciation|__/25
             Word Recognition|__/20
             Fluency|__ wpm
             Intonation|__/15
-            Overall Level|High
+            Overall Level|(The chosen word)
             SCORES_END
 
             NOTES_START
@@ -314,29 +312,34 @@ def analyze_ar():
         
         if "GEMINI_ERROR" in ai_text: return f"Error: {ai_text}", 500
 
-        # === Parsing Arabic ===
+        # === Robust Parsing Arabic ===
         table_data = []
-        overall_score = "متميز" # Default fallback
+        overall_score = "جيد" # Fallback Default
         sections = {"تحليل الأخطاء":[],"مؤشرات الأداء":[],"التوصيات":[]}
         curr_sec = None
         
-        for line in ai_text.split('\n'):
+        lines = ai_text.split('\n')
+        for line in lines:
             clean = line.strip().replace('*','').replace('#','').replace('[','').replace(']','')
             if not clean: continue
             
+            # Extract Key-Value
             if '|' in clean:
                 parts = clean.split('|')
                 if len(parts) >= 2:
-                    k, v = parts[0].strip(), parts[1].strip()
+                    k = parts[0].strip()
+                    v = parts[1].strip()
                     if "التقييم العام" in k:
-                        overall_score = v # Catch the level here
-                    elif "الطلاقة" in k or "الوعي" in k or "الكلمات" in k or "المقاطع" in k:
+                        overall_score = v
+                    elif any(x in k for x in ["الوعي", "المقاطع", "الكلمات", "الطلاقة"]):
                         table_data.append((k,v))
             
+            # Extract Sections
             elif "تحليل الأخطاء" in clean: curr_sec = "تحليل الأخطاء"
             elif "مؤشرات الأداء" in clean: curr_sec = "مؤشرات الأداء"
             elif "التوصيات" in clean: curr_sec = "التوصيات"
-            elif curr_sec: sections[curr_sec].append(clean)
+            elif curr_sec and len(clean) > 2:
+                sections[curr_sec].append(clean)
 
         # PDF Generation
         pdf = ArabicPDF()
@@ -430,14 +433,16 @@ def analyze_en():
         if "GEMINI_ERROR" in ai_text: return f"Gemini Error: {ai_text}", 500
 
         scores_data = []
-        overall_score = "Medium" # Default fallback
+        overall_score = "Medium" # Fallback Default
         notes = {"Error Analysis":[],"Performance Overview":[],"Recommendations":[]}
         curr_note = None
         in_scores = False; in_notes = False
 
-        for line in ai_text.split('\n'):
+        lines = ai_text.split('\n')
+        for line in lines:
             clean = line.strip().replace('*','')
             if not clean: continue
+            
             if "SCORES_START" in clean: in_scores=True; continue
             if "SCORES_END" in clean: in_scores=False; continue
             if "NOTES_START" in clean: in_notes=True; continue
@@ -446,7 +451,8 @@ def analyze_en():
             if in_scores and '|' in clean:
                 parts = clean.split('|')
                 if len(parts) >= 2:
-                    k, v = parts[0].strip(), parts[1].strip()
+                    k = parts[0].strip()
+                    v = parts[1].strip()
                     if "Overall Level" in k: overall_score = v
                     else: scores_data.append((k,v))
 
