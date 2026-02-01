@@ -66,7 +66,6 @@ def get_wrapped_lines(pdf, text, max_width_mm, font_size=12, is_arabic=True):
     for word in words:
         test_line = current_line + [word]
         test_str = " ".join(test_line)
-        # تشكيل النص للعرض الصحيح
         if is_arabic: test_str = ar(test_str)
         
         if pdf.get_string_width(test_str) <= max_width_mm:
@@ -165,13 +164,17 @@ def draw_dynamic_row(pdf, title, content_points, lang='ar'):
 
 def draw_level_badge(pdf, level_text, x, y, lang='ar'):
     try:
+        # --- التعديل هنا: منع تنظيف النص العربي ---
         if lang == 'ar':
+            # نأخذ النص كما هو للعربي
             level = level_text.replace('%','').replace('|','').strip()
         else:
+            # ننظف الإنجليزي فقط
             level = clean_en(level_text).replace('%','').replace('|','').strip()
             
         if not level: level = "متوسط" if lang=='ar' else "Medium"
 
+        # اختيار اللون
         if any(w in level.lower() for w in ['high', 'عالي', 'excellent', 'متميز', 'مبدع']):
             pdf.set_fill_color(218, 165, 32) 
         elif any(w in level.lower() for w in ['medium', 'متوسط', 'good', 'جيد']):
@@ -179,9 +182,11 @@ def draw_level_badge(pdf, level_text, x, y, lang='ar'):
         else:
             pdf.set_fill_color(205, 127, 50)
 
+        # رسم الدائرة
         pdf.set_draw_color(101, 67, 33); pdf.set_line_width(0.5)
         pdf.circle(x, y, 16, 'FD')
         
+        # العنوان
         pdf.set_text_color(101, 67, 33)
         if lang == 'ar':
             try: pdf.set_font('AmiriB', '', 11)
@@ -197,6 +202,7 @@ def draw_level_badge(pdf, level_text, x, y, lang='ar'):
         pdf.set_xy(x - 15, y - 25)
         pdf.cell(30, 6, title, 0, 0, 'C')
 
+        # النص داخل الدائرة
         pdf.set_text_color(255, 255, 255)
         
         font_size = 14
@@ -241,16 +247,13 @@ class ArabicPDF(BasePDF):
         self.set_text_color(184,134,11)
         self.cell(0, 8, ar("نظام التقييم الصوتي الذكي"), 0, 1, 'C')
         self.ln(5)
-    
     def footer(self):
         self.set_y(-15)
-        # --- FIX: Split lines here ---
         try: 
             self.set_font('Amiri','',10)
         except: 
             pass
-        self.set_text_color(128,128,128)
-        self.cell(0,10,ar(f"صفحة {self.page_no()}"),0,0,'C')
+        self.set_text_color(128,128,128); self.cell(0,10,ar(f"صفحة {self.page_no()}"),0,0,'C')
 
 class EnglishPDF(BasePDF):
     def header(self):
@@ -267,16 +270,13 @@ class EnglishPDF(BasePDF):
         self.set_text_color(184,134,11)
         self.cell(0, 8, "Smart Reading Assessment System", 0, 1, 'C')
         self.ln(8)
-    
     def footer(self):
         self.set_y(-15)
-        # --- FIX: Split lines here ---
         try: 
             self.set_font('Amiri','',10)
         except: 
             self.set_font('Arial','',10)
-        self.set_text_color(128,128,128)
-        self.cell(0,10,f"Page {self.page_no()}",0,0,'C')
+        self.set_text_color(128,128,128); self.cell(0,10,f"Page {self.page_no()}",0,0,'C')
 
 # ================== AI Logic ==================
 def gemini_analyze_audio(path, ref_text, lang="ar"):
@@ -285,6 +285,7 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
         model = genai.GenerativeModel("gemini-2.5-flash")
         
         if lang == "ar":
+            # البرومبت العربي: يجبره على اختيار كلمة عربية
             prompt = f"""
             أنت خبير تربوي. النص المرجعي: "{ref_text}"
             
@@ -306,6 +307,7 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
             - (نقطة)
             """
         else:
+            # English Prompt
             prompt = f"""
             Professional English teacher. Ref: "{ref_text}"
             
@@ -387,13 +389,16 @@ def analyze_ar():
         pdf = ArabicPDF()
         pdf.add_page()
         
+        # Load fonts explicitly again to be safe
         try:
             pdf.add_font('Amiri', '', os.path.abspath('Amiri-Regular.ttf'))
             pdf.add_font('AmiriB', '', os.path.abspath('Amiri-Bold.ttf'))
         except: pass
 
+        # Draw Badge
         draw_level_badge(pdf, overall_level, x=35, y=pdf.get_y()+8, lang='ar')
 
+        # Info Table
         try: pdf.set_font('Amiri', '', 14)
         except: pass
         pdf.set_fill_color(240,240,240); pdf.set_text_color(101,67,33)
@@ -507,6 +512,7 @@ def analyze_en():
         try: pdf.set_font("Amiri", "", 12)
         except: pass
 
+        # Info
         pdf.set_fill_color(240,240,240); pdf.set_draw_color(184,134,11); pdf.set_text_color(101,67,33)
         pdf.cell(80,10,"Date",1,0,'C',1)
         pdf.cell(70,10,"Student Name",1,1,'C',1)
@@ -517,6 +523,7 @@ def analyze_en():
         safe_name = clean_en(name)
         pdf.cell(70,10,safe_name,1,1,'C',1)
         
+        # BADGE
         draw_level_badge(pdf, overall_level, x=185, y=pdf.get_y()-5, lang='en')
         pdf.ln(18)
 
