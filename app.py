@@ -302,7 +302,7 @@ class EnglishPDF(BasePDF):
 def gemini_analyze_audio(path, ref_text, lang="ar"):
     try:
         myfile = genai.upload_file(path)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
         if lang == "ar":
             prompt = f"""
