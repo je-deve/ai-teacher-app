@@ -217,34 +217,56 @@ def draw_styled_english_row(pdf, title, content_points):
     pdf.set_y(start_y + total_row_height)
     pdf.ln(3)
 
-def draw_overall_badge(pdf, score_text, x, y, lang='ar'):
-    # Draw Circle
-    pdf.set_fill_color(184, 134, 11) # Gold
+def draw_overall_badge(pdf, level_text, x, y, lang='ar'):
+    # Clean Text
+    level = level_text.replace('%', '').strip()
+    
+    # Dynamic Color based on Level
+    # Gold for High/Creative
+    if any(w in level for w in ['High', 'مبدع', 'متميز', 'Excellent']):
+        pdf.set_fill_color(184, 134, 11) 
+    # Silver for Medium/Advanced
+    elif any(w in level for w in ['Medium', 'متقدم', 'Good', 'جيد']):
+        pdf.set_fill_color(192, 192, 192) 
+    # Bronze/Orange for Low/Needs Help
+    else:
+        pdf.set_fill_color(205, 127, 50) 
+
     pdf.set_draw_color(101, 67, 33)
     pdf.set_line_width(0.5)
     pdf.circle(x, y, 15, 'FD')
     
-    # Draw Title above circle
+    # Title
     pdf.set_text_color(101, 67, 33)
     if lang == 'ar':
-        try: pdf.set_font('AmiriB', '', 12)
+        try: pdf.set_font('AmiriB', '', 11)
         except: pdf.set_font('Arial', 'B', 10)
-        title = ar("التقييم العام")
+        title = ar("المستوى العام")
     else:
-        pdf.set_font('Arial', 'B', 10)
-        title = "Overall"
+        pdf.set_font('Arial', 'B', 9)
+        title = "Overall Level"
         
     pdf.set_xy(x - 15, y - 24)
     pdf.cell(30, 6, title, 0, 0, 'C')
 
-    # Draw Score inside circle
+    # Level Text inside circle
     pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Arial', 'B', 14)
-    score = score_text.replace('%', '').strip()
-    if score.isdigit(): score += "%"
     
+    # Dynamic Font Size for Text
+    font_size = 14
+    if len(level) > 6: font_size = 10
+    elif len(level) > 4: font_size = 12
+    
+    if lang == 'ar':
+        try: pdf.set_font('AmiriB', '', font_size)
+        except: pass
+        level_display = ar(level)
+    else:
+        pdf.set_font('Arial', 'B', font_size)
+        level_display = level
+
     pdf.set_xy(x - 15, y - 5)
-    pdf.cell(30, 10, score, 0, 0, 'C')
+    pdf.cell(30, 10, level_display, 0, 0, 'C')
 
 # ================== PDF Classes ==================
 class BasePDF(FPDF):
@@ -306,33 +328,37 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
         
         if lang == "ar":
             prompt = f"""
-            أنت خبير تربوي. النص المرجعي: "{ref_text}"
+            أنت معلم أطفال داعم ومشجع جداً. النص المرجعي: "{ref_text}"
             
-            تعليمات:
-            1. قيّم القراءة بدقة.
-            2. احسب "التقييم العام" كنسبة مئوية بناءً على أداء الطالب (مثلاً 85%).
-
-            المطلوب (التزم بهذا التنسيق تماماً):
+            المهمة: قيّم قراءة الطفل بلطف. ركز على الجوانب الإيجابية.
+            
+            تعليمات الدرجات:
+            - "التقييم العام": اختر واحدة فقط من هذه المستويات بناءً على الأداء: (مبدع، متميز، متقدم، يحتاج للمساعدة).
+            
+            المطلوب (التزم بهذا التنسيق):
             الوعي الصوتي|__/25
             قراءة المقاطع|__/24
             الكلمات الشائعة|__/20
             الطلاقة القرائية|__ كلمة/دقيقة
-            التقييم العام|__%
+            التقييم العام|__
 
             [تحليل الأخطاء]
-            - (نقطة)
+            - (اذكر الأخطاء بأسلوب لطيف وبناء)
             
             [مؤشرات الأداء]
-            - (نقطة)
+            - (اذكر نقاط القوة وما أتقنه الطالب)
             
             [التوصيات]
-            - (نقطة)
+            - (نصائح بسيطة ومشجعة للتحسن)
             """
         else:
             prompt = f"""
-            You are a professional English teacher. Reference: "{ref_text}"
+            You are a very encouraging and kind teacher for kids. Reference: "{ref_text}"
             
-            Task: Evaluate reading and calculate an "Overall Score" percentage.
+            Task: Evaluate the child's reading gently. Focus on positives.
+            
+            Scoring Instructions:
+            - "Overall Level": Choose exactly one: (High, Medium, Low).
             
             Strict Format:
             SCORES_START
@@ -340,16 +366,16 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
             Word Recognition|__/20
             Fluency|__ wpm
             Intonation|__/15
-            Overall Score|__%
+            Overall Level|__
             SCORES_END
 
             NOTES_START
             # Error Analysis
-            - (Point)
+            - (Mention errors gently)
             # Performance Overview
-            - (Point)
+            - (Highlight strengths)
             # Recommendations
-            - (Point)
+            - (Simple, encouraging tips)
             NOTES_END
             """
         res = model.generate_content([myfile, prompt])
@@ -413,7 +439,6 @@ def analyze_ar():
         pdf.set_draw_color(184,134,11)
         pdf.set_text_color(101,67,33)
         
-        # Shift table to make room for badge
         start_x = 60
         pdf.set_x(start_x)
         pdf.cell(80,10,ar("تاريخ التقييم"),1,0,'C',1)
@@ -530,7 +555,7 @@ def analyze_en():
                  parts = clean.split('|')
                  if len(parts) == 2:
                      k, v = parts[0].strip(), parts[1].strip()
-                     if "Overall Score" in k:
+                     if "Overall Level" in k:
                          overall_score = v
                      else:
                          scores_data.append((k, v))
