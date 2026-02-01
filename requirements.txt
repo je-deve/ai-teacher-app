@@ -1,6 +1,6 @@
 flask
 fpdf2
-google-generativeai
+google-generativeai>=0.7.0
 python-dotenv
 arabic-reshaper
 python-bidi
