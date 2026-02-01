@@ -5,7 +5,7 @@ from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 import warnings
 import traceback
-import re # مكتبة للبحث في النصوص
+import re
 
 # إخفاء التحذيرات
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -125,35 +125,46 @@ def draw_styled_english_row(pdf, title, content_points):
     if not content_points: return
     col_title = 45; col_content = 145; lh = 7
     lines = []
+    # Wrap lines properly
     for p in content_points:
         clean = p.strip().replace('-', '').strip()
-        if clean: lines.extend(get_english_wrapped_lines(pdf, "- "+clean, col_content-6, 11))
+        if clean: lines.extend(get_english_wrapped_lines(pdf, "- "+clean, col_content-10, 11)) # Increased padding
     
-    h = (len(lines) * lh) + 8
-    if h < 20: h = 20
+    h = (len(lines) * lh) + 12 # Increased vertical padding
+    if h < 25: h = 25
     if pdf.get_y() + h > 275: pdf.add_page()
     y = pdf.get_y()
     
-    pdf.set_fill_color(253, 245, 230); pdf.rect(10, y, col_title, h, 'FD')
-    pdf.set_fill_color(255, 255, 255); pdf.rect(55, y, col_content, h, 'FD')
+    pdf.set_fill_color(253, 245, 230); pdf.set_draw_color(184, 134, 11)
+    pdf.rect(10, y, col_title, h, 'FD')
+    pdf.set_fill_color(255, 255, 255)
+    pdf.rect(55, y, col_content, h, 'FD')
     
+    # Title centered vertically
     pdf.set_font("Arial", "B", 12); pdf.set_text_color(101, 67, 33)
-    pdf.set_xy(10, y + (h/2) - 3); pdf.cell(col_title, 6, title, 0, 0, 'C')
+    # Split title if long
+    title_words = title.split()
+    if len(title) > 15:
+        pdf.set_xy(10, y + (h/2) - 4)
+        pdf.multi_cell(col_title, 5, title, align='C')
+    else:
+        pdf.set_xy(10, y + (h/2) - 3)
+        pdf.cell(col_title, 6, title, 0, 0, 'C')
     
+    # Content
     pdf.set_font("Arial", "", 11); pdf.set_text_color(50, 50, 50)
-    cur_y = y + 4
+    cur_y = y + 6
     for l in lines:
         pdf.set_xy(58, cur_y); pdf.cell(col_content-6, lh, l, 0, 0, 'L')
         cur_y += lh
-    pdf.set_y(y + h); pdf.ln(3)
+    pdf.set_y(y + h); pdf.ln(4) # Extra spacing after row
 
 def draw_overall_badge(pdf, level_text, x, y, lang='ar'):
     try:
-        # Clean up the level text
         level = level_text.replace('%', '').replace(':', '').replace('|', '').strip()
         if not level: level = "جيد" if lang=='ar' else "Good"
 
-        # 1. Choose Color
+        # Colors
         if any(w in level for w in ['High', 'مبدع', 'متميز', 'Excellent']):
             pdf.set_fill_color(218, 165, 32) # Gold
         elif any(w in level for w in ['Medium', 'متقدم', 'Good', 'جيد', 'متوسط']):
@@ -161,12 +172,11 @@ def draw_overall_badge(pdf, level_text, x, y, lang='ar'):
         else:
             pdf.set_fill_color(205, 127, 50) # Bronze
 
-        # 2. Draw Circle
-        pdf.set_draw_color(101, 67, 33)
-        pdf.set_line_width(0.5)
+        # Draw Circle
+        pdf.set_draw_color(101, 67, 33); pdf.set_line_width(0.5)
         pdf.circle(x, y, 16, 'FD')
         
-        # 3. Draw Title
+        # Title above circle (moved higher to avoid overlap)
         pdf.set_text_color(101, 67, 33)
         if lang == 'ar':
             try: pdf.set_font('AmiriB', '', 11)
@@ -176,10 +186,10 @@ def draw_overall_badge(pdf, level_text, x, y, lang='ar'):
             pdf.set_font('Arial', 'B', 9)
             title = "Level"
             
-        pdf.set_xy(x - 15, y - 25)
+        pdf.set_xy(x - 15, y - 25) # Moved up
         pdf.cell(30, 6, title, 0, 0, 'C')
 
-        # 4. Draw Text
+        # Level Text
         pdf.set_text_color(255, 255, 255)
         font_size = 14
         if len(level) > 10: font_size = 9
@@ -195,8 +205,7 @@ def draw_overall_badge(pdf, level_text, x, y, lang='ar'):
 
         pdf.set_xy(x - 15, y - 5)
         pdf.cell(30, 10, level_display, 0, 0, 'C')
-    except:
-        pass # If drawing fails, don't crash the app
+    except: pass
 
 # ================== PDF Classes ==================
 class BasePDF(FPDF):
@@ -214,7 +223,6 @@ class ArabicPDF(BasePDF):
             self.add_font('AmiriB', '', os.path.abspath('Amiri-Bold.ttf'))
             self.set_font('AmiriB', '', 18)
         except: self.set_font('Arial', 'B', 16)
-        
         self.set_text_color(101, 67, 33)
         self.cell(0, 10, ar("مدارس قدرات الأجيال العالمية"), 0, 1, 'C')
         try: self.set_font('Amiri', '', 14)
@@ -232,7 +240,7 @@ class EnglishPDF(BasePDF):
         self.set_font('Arial', '', 12)
         self.set_text_color(184, 134, 11)
         self.cell(0, 8, "Smart Reading Assessment System", 0, 1, 'C')
-        self.ln(5)
+        self.ln(8) # Increased spacing
 
 # ================== AI Analysis ==================
 def gemini_analyze_audio(path, ref_text, lang="ar"):
@@ -242,11 +250,15 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
         
         if lang == "ar":
             prompt = f"""
-            أنت معلم أطفال داعم. النص: "{ref_text}"
+            أنت معلم لغة عربية خبير. النص: "{ref_text}"
             
-            تعليمات الدرجات (اختر واحدة): (مبدع، متميز، متقدم، جيد).
+            المهمة:
+            1. قيّم الأخطاء بدقة وموضوعية (لا تجامل في رصد الأخطاء).
+            2. لكن في "التقييم العام"، راعِ عمر الطفل واختر مستوى مشجعاً.
             
-            التنسيق المطلوب:
+            اختر "التقييم العام" بكلمة واحدة: (مبدع، متميز، متقدم، جيد).
+            
+            التنسيق:
             الوعي الصوتي|__/25
             قراءة المقاطع|__/24
             الكلمات الشائعة|__/20
@@ -254,17 +266,21 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
             التقييم العام|(الكلمة المختارة)
 
             [تحليل الأخطاء]
-            - (نقطة)
+            - (اذكر الأخطاء بدقة ووضوح)
             [مؤشرات الأداء]
-            - (نقطة)
+            - (اذكر نقاط القوة)
             [التوصيات]
-            - (نقطة)
+            - (نصائح للتحسن)
             """
         else:
             prompt = f"""
-            Supportive teacher. Ref: "{ref_text}"
+            You are an expert English teacher evaluating a child. Ref: "{ref_text}"
             
-            Task: Choose "Overall Level" from: (High, Medium, Low).
+            Task:
+            1. Be honest and precise about specific errors (Pronunciation, skips, etc).
+            2. For "Overall Level", be encouraging considering it's a child.
+            
+            Choose "Overall Level" from: (High, Medium, Low).
             
             Strict Format:
             SCORES_START
@@ -277,11 +293,11 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
 
             NOTES_START
             # Error Analysis
-            - (Point)
+            - (List specific errors honestly)
             # Performance Overview
-            - (Point)
+            - (Highlight strengths)
             # Recommendations
-            - (Point)
+            - (Actionable tips)
             NOTES_END
             """
         res = model.generate_content([myfile, prompt])
@@ -312,9 +328,8 @@ def analyze_ar():
         
         if "GEMINI_ERROR" in ai_text: return f"Error: {ai_text}", 500
 
-        # === Robust Parsing Arabic ===
         table_data = []
-        overall_score = "جيد" # Fallback Default
+        overall_score = "جيد"
         sections = {"تحليل الأخطاء":[],"مؤشرات الأداء":[],"التوصيات":[]}
         curr_sec = None
         
@@ -323,32 +338,26 @@ def analyze_ar():
             clean = line.strip().replace('*','').replace('#','').replace('[','').replace(']','')
             if not clean: continue
             
-            # Extract Key-Value
             if '|' in clean:
                 parts = clean.split('|')
                 if len(parts) >= 2:
                     k = parts[0].strip()
                     v = parts[1].strip()
-                    if "التقييم العام" in k:
-                        overall_score = v
+                    if "التقييم العام" in k: overall_score = v
                     elif any(x in k for x in ["الوعي", "المقاطع", "الكلمات", "الطلاقة"]):
                         table_data.append((k,v))
             
-            # Extract Sections
             elif "تحليل الأخطاء" in clean: curr_sec = "تحليل الأخطاء"
             elif "مؤشرات الأداء" in clean: curr_sec = "مؤشرات الأداء"
             elif "التوصيات" in clean: curr_sec = "التوصيات"
-            elif curr_sec and len(clean) > 2:
-                sections[curr_sec].append(clean)
+            elif curr_sec and len(clean) > 2: sections[curr_sec].append(clean)
 
-        # PDF Generation
         pdf = ArabicPDF()
         pdf.add_page()
         
-        # Draw Overall Badge (Left)
-        draw_overall_badge(pdf, overall_score, x=35, y=pdf.get_y()+5, lang='ar')
+        # Badge Left, Info Right
+        draw_overall_badge(pdf, overall_score, x=35, y=pdf.get_y()+8, lang='ar')
         
-        # Student Info Table (Shifted Right)
         try: pdf.set_font('Amiri', '', 14)
         except: pass
         pdf.set_fill_color(240,240,240); pdf.set_text_color(101,67,33)
@@ -362,9 +371,8 @@ def analyze_ar():
         pdf.set_fill_color(255,255,255)
         pdf.cell(80,10,date.today().strftime("%Y/%m/%d"),1,0,'C',1)
         pdf.cell(60,10,ar(name),1,1,'C',1)
-        pdf.ln(10)
+        pdf.ln(12)
 
-        # Ref Text
         if ref_text:
             try: pdf.set_font('AmiriB','',14)
             except: pass
@@ -377,17 +385,14 @@ def analyze_ar():
                 pdf.cell(0,7,l,0,1,'R')
             pdf.ln(5)
 
-        # Scores Table
         if table_data:
             try: pdf.set_font('AmiriB','',14)
             except: pass
             pdf.set_text_color(101,67,33)
             pdf.cell(0,10,ar("نتائج التقييم:"),0,1,'R')
-            
             pdf.set_fill_color(184,134,11); pdf.set_text_color(255,255,255)
             pdf.cell(60,10,ar("الدرجة"),1,0,'C',1)
             pdf.cell(130,10,ar("المعيار"),1,1,'C',1)
-            
             pdf.set_text_color(0,0,0); pdf.set_font('Amiri','',13)
             fill=False
             for k,v in table_data:
@@ -398,7 +403,6 @@ def analyze_ar():
                 fill=not fill
             pdf.ln(8)
 
-        # Feedback Tables
         if any(sections.values()):
             try: pdf.set_font('AmiriB','',16)
             except: pass
@@ -433,7 +437,7 @@ def analyze_en():
         if "GEMINI_ERROR" in ai_text: return f"Gemini Error: {ai_text}", 500
 
         scores_data = []
-        overall_score = "Medium" # Fallback Default
+        overall_score = "Medium"
         notes = {"Error Analysis":[],"Performance Overview":[],"Recommendations":[]}
         curr_note = None
         in_scores = False; in_notes = False
@@ -442,7 +446,6 @@ def analyze_en():
         for line in lines:
             clean = line.strip().replace('*','')
             if not clean: continue
-            
             if "SCORES_START" in clean: in_scores=True; continue
             if "SCORES_END" in clean: in_scores=False; continue
             if "NOTES_START" in clean: in_notes=True; continue
@@ -466,16 +469,19 @@ def analyze_en():
         pdf.add_page()
         pdf.set_font("Arial", "", 12)
 
-        # Info Table + Badge (Right)
+        # Info Table Left + Badge Right (Fixed Spacing)
         pdf.set_fill_color(240,240,240); pdf.set_text_color(101,67,33); pdf.set_draw_color(184,134,11)
         pdf.cell(80,10,"Date",1,0,'C',1)
         pdf.cell(70,10,"Student Name",1,1,'C',1)
+        
+        pdf.set_xy(10, pdf.get_y()+10) # Move down
         pdf.set_fill_color(255,255,255)
         pdf.cell(80,10,date.today().strftime("%Y/%m/%d"),1,0,'C',1)
         pdf.cell(70,10,name,1,1,'C',1)
         
-        draw_overall_badge(pdf, overall_score, x=180, y=pdf.get_y()-10, lang='en')
-        pdf.ln(12)
+        # Badge shifted down to avoid logo overlap
+        draw_overall_badge(pdf, overall_score, x=185, y=pdf.get_y()-5, lang='en')
+        pdf.ln(18) # Space after info section
 
         if ref_text:
             pdf.set_font("Arial","B",12); pdf.set_text_color(101,67,33)
