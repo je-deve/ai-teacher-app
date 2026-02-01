@@ -4,10 +4,10 @@ import requests
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 import warnings
+import traceback
 
 # إخفاء التحذيرات
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore")
 
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -58,6 +58,7 @@ def get_wrapped_lines(pdf, text, max_width_mm, font_size=12):
     for word in words:
         test_line = current_line + [word]
         test_str = " ".join(test_line)
+        # Check width with arabic reshaping logic just in case
         if pdf.get_string_width(ar(test_str)) <= max_width_mm:
             current_line.append(word)
         else:
@@ -66,14 +67,19 @@ def get_wrapped_lines(pdf, text, max_width_mm, font_size=12):
     if current_line: lines.append(ar(" ".join(current_line)))
     return lines
 
+# دالة التفاف النص الإنجليزي (معدلة لتستخدم Amiri لتجنب أخطاء Unicode)
 def get_english_wrapped_lines(pdf, text, max_width_mm, font_size=11):
-    pdf.set_font("Arial", "", font_size)
+    # نستخدم Amiri هنا لأنه يدعم الرموز الخاصة عكس Arial
+    try: pdf.set_font("Amiri", "", font_size)
+    except: pass
+    
     words = text.split()
     lines = []; current_line = []
     
     for word in words:
         test_line = current_line + [word]
         test_str = " ".join(test_line)
+        
         if pdf.get_string_width(test_str) <= max_width_mm:
             current_line.append(word)
         else:
@@ -93,14 +99,14 @@ def draw_smart_table_row(pdf, title, content_points):
         if clean: lines.extend(get_wrapped_lines(pdf, "• "+clean, col_content-6, 12))
         
     h = (len(lines)*lh) + (pad*2)
-    if h < 20: h = 20
+    if h < 18: h = 18
     if pdf.get_y() + h > 275: pdf.add_page()
     
     y = pdf.get_y()
     pdf.set_fill_color(253,245,230); pdf.set_draw_color(184,134,11)
-    pdf.rect(155, y, col_title, h, 'FD')
+    pdf.rect(155, y, col_title, h, 'FD') # Title Box
     pdf.set_fill_color(255,255,255)
-    pdf.rect(10, y, col_content, h, 'FD')
+    pdf.rect(10, y, col_content, h, 'FD') # Content Box
     
     try: pdf.set_font('AmiriB','',13)
     except: pass
@@ -114,7 +120,7 @@ def draw_smart_table_row(pdf, title, content_points):
     for l in lines:
         pdf.set_xy(13, cur_y); pdf.cell(col_content-6, lh, l, 0, 0, 'R')
         cur_y += lh
-    pdf.set_y(y + h); pdf.ln(3)
+    pdf.set_y(y + h); pdf.ln(2)
 
 def draw_styled_english_row(pdf, title, content_points):
     if not content_points: return
@@ -135,10 +141,18 @@ def draw_styled_english_row(pdf, title, content_points):
     pdf.set_fill_color(255,255,255)
     pdf.rect(55, y, col_content, h, 'FD')
     
-    pdf.set_font("Arial","B",12); pdf.set_text_color(101,67,33)
+    # Use AmiriB instead of Arial B to prevent Unicode crash
+    try: pdf.set_font("AmiriB","",13)
+    except: pdf.set_font("Arial","B",12)
+    
+    pdf.set_text_color(101,67,33)
     pdf.set_xy(10, y+(h/2)-3); pdf.cell(col_title, 6, title, 0, 0, 'C')
     
-    pdf.set_font("Arial","",11); pdf.set_text_color(50,50,50)
+    # Use Amiri instead of Arial to prevent Unicode crash
+    try: pdf.set_font("Amiri","",11)
+    except: pdf.set_font("Arial","",11)
+    
+    pdf.set_text_color(50,50,50)
     cur_y = y + 4
     for l in lines:
         pdf.set_xy(58, cur_y); pdf.cell(col_content-6, lh, l, 0, 0, 'L')
@@ -167,7 +181,7 @@ class ArabicPDF(BasePDF):
         except: pass
         self.set_text_color(184,134,11)
         self.cell(0, 8, ar("نظام التقييم الصوتي الذكي"), 0, 1, 'C')
-        self.ln(10)
+        self.ln(5)
     def footer(self):
         self.set_y(-15); try: self.set_font('Amiri','',10); except: pass
         self.set_text_color(128,128,128); self.cell(0,10,ar(f"صفحة {self.page_no()}"),0,0,'C')
@@ -175,13 +189,28 @@ class ArabicPDF(BasePDF):
 class EnglishPDF(BasePDF):
     def header(self):
         self.draw_frame(); self.draw_logo()
-        self.set_font('Arial', 'B', 16); self.set_text_color(101,67,33)
+        # إضافة خط Amiri للإنجليزي أيضاً
+        try:
+            self.add_font('Amiri', '', os.path.abspath('Amiri-Regular.ttf'))
+            self.add_font('AmiriB', '', os.path.abspath('Amiri-Bold.ttf'))
+            self.set_font('AmiriB', '', 18) # استخدمنا أميري بدلاً من أريال
+        except: 
+            self.set_font('Arial', 'B', 16)
+            
+        self.set_text_color(101,67,33)
         self.cell(0, 10, "Generations Abilities Schools", 0, 1, 'C')
-        self.set_font('Arial', '', 12); self.set_text_color(184,134,11)
+        
+        try: self.set_font('Amiri', '', 14)
+        except: self.set_font('Arial', '', 12)
+        
+        self.set_text_color(184,134,11)
         self.cell(0, 8, "Smart Reading Assessment System", 0, 1, 'C')
-        self.ln(10)
+        self.ln(8)
+        
     def footer(self):
-        self.set_y(-15); self.set_font('Arial','',10)
+        self.set_y(-15)
+        try: self.set_font('Amiri','',10)
+        except: self.set_font('Arial','',10)
         self.set_text_color(128,128,128); self.cell(0,10,f"Page {self.page_no()}",0,0,'C')
 
 # ================== AI Logic ==================
@@ -273,13 +302,15 @@ def analyze_ar():
             clean = line.strip().replace('*','').replace('#','').replace('[','').replace(']','')
             if not clean: continue
             
-            if '|' in clean and len(clean.split('|'))==2:
-                table_data.append(clean.split('|'))
+            if '|' in clean:
+                parts = clean.split('|')
+                if len(parts) >= 2:
+                    table_data.append((parts[0].strip(), parts[1].strip()))
             
             elif "تحليل الأخطاء" in clean: curr_sec = "تحليل الأخطاء"
             elif "مؤشرات الأداء" in clean: curr_sec = "مؤشرات الأداء"
             elif "التوصيات" in clean: curr_sec = "التوصيات"
-            elif curr_sec and len(clean) > 2: sections[curr_sec].append(clean)
+            elif curr_sec: sections[curr_sec].append(clean)
 
         # PDF
         pdf = ArabicPDF()
@@ -294,7 +325,7 @@ def analyze_ar():
         pdf.set_fill_color(255,255,255)
         pdf.cell(95,10,date.today().strftime("%Y/%m/%d"),1,0,'C',1)
         pdf.cell(95,10,ar(name),1,1,'C',1)
-        pdf.ln(12)
+        pdf.ln(10)
 
         # Ref Text
         if ref_text:
@@ -309,7 +340,7 @@ def analyze_ar():
                 pdf.cell(0,7,l,0,1,'R')
             pdf.ln(5)
 
-        # Scores Table (Automatically contains Overall Score now)
+        # Scores Table
         if table_data:
             try: pdf.set_font('AmiriB','',16)
             except: pass
@@ -318,11 +349,14 @@ def analyze_ar():
             pdf.ln(2)
             
             pdf.set_fill_color(184,134,11); pdf.set_text_color(255,255,255)
-            try: pdf.set_font('AmiriB','',14); except: pass
+            try: pdf.set_font('AmiriB','',14); 
+            except: pass
             pdf.cell(60,10,ar("الدرجة"),1,0,'C',1)
             pdf.cell(130,10,ar("المعيار"),1,1,'C',1)
             
-            pdf.set_text_color(0,0,0); try: pdf.set_font('Amiri','',13); except: pass
+            pdf.set_text_color(0,0,0); 
+            try: pdf.set_font('Amiri','',13); 
+            except: pass
             fill=False
             for k,v in table_data:
                 if "الفهم القرائي" in k: continue
@@ -394,7 +428,9 @@ def analyze_en():
 
         pdf = EnglishPDF()
         pdf.add_page()
-        pdf.set_font("Arial", "", 12)
+        # Use Amiri for default font to handle Unicode safely
+        try: pdf.set_font("Amiri", "", 12)
+        except: pass
 
         # Info
         pdf.set_fill_color(240,240,240); pdf.set_draw_color(184,134,11); pdf.set_text_color(101,67,33)
@@ -407,22 +443,32 @@ def analyze_en():
 
         # Ref
         if ref_text:
-            pdf.set_font("Arial","B",12); pdf.set_text_color(101,67,33)
+            try: pdf.set_font("AmiriB", "", 12)
+            except: pass
+            pdf.set_text_color(101,67,33)
             pdf.cell(0,8,"Reference Text:",0,1,'L')
-            pdf.set_font("Arial","",11); pdf.set_text_color(60,60,60)
+            try: pdf.set_font("Amiri", "", 11)
+            except: pass
+            pdf.set_text_color(60,60,60)
             lines = get_english_wrapped_lines(pdf, ref_text, 190, 11)
             for l in lines: pdf.cell(0,6,l,0,1,'L')
             pdf.ln(10)
 
         # Scores Table (Will include Overall automatically)
         if scores_data:
-            pdf.set_font("Arial","B",14); pdf.set_text_color(101,67,33)
+            try: pdf.set_font("AmiriB", "", 14)
+            except: pass
+            pdf.set_text_color(101,67,33)
             pdf.cell(0,10,"Assessment Scores:",0,1,'L')
             pdf.ln(2)
-            pdf.set_fill_color(184,134,11); pdf.set_text_color(255,255,255); pdf.set_font("Arial","B",12)
+            pdf.set_fill_color(184,134,11); pdf.set_text_color(255,255,255)
+            try: pdf.set_font("AmiriB", "", 12); 
+            except: pass
             pdf.cell(130,10,"Criteria",1,0,'L',1)
             pdf.cell(60,10,"Score",1,1,'C',1)
-            pdf.set_text_color(0,0,0); pdf.set_font("Arial","",12)
+            pdf.set_text_color(0,0,0); 
+            try: pdf.set_font("Amiri","",12); 
+            except: pass
             fill=False
             for c,s in scores_data:
                 if fill: pdf.set_fill_color(245,245,245)
@@ -434,7 +480,9 @@ def analyze_en():
 
         # Notes
         if any(notes.values()):
-            pdf.set_font("Arial","B",14); pdf.set_text_color(101,67,33)
+            try: pdf.set_font("AmiriB", "", 14); 
+            except: pass
+            pdf.set_text_color(101,67,33)
             pdf.cell(0,10,"Detailed Feedback:",0,1,'L')
             draw_styled_english_row(pdf, "Error Analysis", notes["Error Analysis"])
             draw_styled_english_row(pdf, "Performance Overview", notes["Performance Overview"])
