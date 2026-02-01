@@ -238,10 +238,13 @@ class ArabicPDF(BasePDF):
         self.cell(0, 8, ar("نظام التقييم الصوتي الذكي"), 0, 1, 'C')
         self.ln(5)
     def footer(self):
-        self.set_y(-15); 
-        try: self.set_font('Amiri','',10); 
-        except: pass
-        self.set_text_color(128,128,128); self.cell(0,10,ar(f"صفحة {self.page_no()}"),0,0,'C')
+        self.set_y(-15)
+        try:
+            self.set_font('Amiri','',10)
+        except:
+            pass
+        self.set_text_color(128,128,128)
+        self.cell(0,10,ar(f"صفحة {self.page_no()}"),0,0,'C')
 
 class EnglishPDF(BasePDF):
     def header(self):
@@ -259,10 +262,13 @@ class EnglishPDF(BasePDF):
         self.cell(0, 8, "Smart Reading Assessment System", 0, 1, 'C')
         self.ln(8)
     def footer(self):
-        self.set_y(-15); 
-        try: self.set_font('Amiri','',10); 
-        except: pass
-        self.set_text_color(128,128,128); self.cell(0,10,f"Page {self.page_no()}",0,0,'C')
+        self.set_y(-15)
+        try: 
+            self.set_font('Amiri','',10)
+        except: 
+            self.set_font('Arial','',10)
+        self.set_text_color(128,128,128)
+        self.cell(0,10,f"Page {self.page_no()}",0,0,'C')
 
 # ================== AI Logic ==================
 def gemini_analyze_audio(path, ref_text, lang="ar"):
@@ -410,13 +416,10 @@ def analyze_ar():
             pdf.cell(0,10,ar("نتائج التقييم:"),0,1,'R')
             pdf.ln(2)
             pdf.set_fill_color(184,134,11); pdf.set_text_color(255,255,255)
-            try: pdf.set_font('AmiriB','',14); 
-            except: pass
+            try: pdf.set_font('AmiriB','',14); except: pass
             pdf.cell(60,10,ar("الدرجة"),1,0,'C',1)
             pdf.cell(130,10,ar("المعيار"),1,1,'C',1)
-            pdf.set_text_color(0,0,0); 
-            try: pdf.set_font('Amiri','',13); 
-            except: pass
+            pdf.set_text_color(0,0,0); try: pdf.set_font('Amiri','',13); except: pass
             fill=False
             for k,v in table_data:
                 if fill: pdf.set_fill_color(245,245,245)
@@ -511,31 +514,25 @@ def analyze_en():
         pdf.ln(18)
 
         if ref_text:
-            try: pdf.set_font("AmiriB","",12); 
-            except: pass
+            try: pdf.set_font("AmiriB","",12); except: pass
             pdf.set_text_color(101,67,33)
             pdf.cell(0,8,"Reference Text:",0,1,'L')
-            try: pdf.set_font("Amiri","",11); 
-            except: pass
+            try: pdf.set_font("Amiri","",11); except: pass
             pdf.set_text_color(60,60,60)
             lines = get_english_wrapped_lines(pdf, ref_text, 190, 11)
             for l in lines: pdf.cell(0,6,l,0,1,'L')
             pdf.ln(8)
 
         if scores_data:
-            try: pdf.set_font("AmiriB","",14); 
-            except: pass
+            try: pdf.set_font("AmiriB","",14); except: pass
             pdf.set_text_color(101,67,33)
             pdf.cell(0,10,"Assessment Scores:",0,1,'L')
             pdf.ln(2)
             pdf.set_fill_color(184,134,11); pdf.set_text_color(255,255,255)
-            try: pdf.set_font("AmiriB","",12); 
-            except: pass
+            try: pdf.set_font("AmiriB","",12); except: pass
             pdf.cell(130,10,"Criteria",1,0,'L',1)
             pdf.cell(60,10,"Score",1,1,'C',1)
-            pdf.set_text_color(0,0,0); 
-            try: pdf.set_font("Amiri","",12); 
-            except: pass
+            pdf.set_text_color(0,0,0); try: pdf.set_font("Amiri","",12); except: pass
             fill=False
             for c,s in scores_data:
                 if fill: pdf.set_fill_color(245,245,245)
@@ -548,8 +545,7 @@ def analyze_en():
             pdf.ln(12)
 
         if any(notes.values()):
-            try: pdf.set_font("AmiriB","",14); 
-            except: pass
+            try: pdf.set_font("AmiriB","",14); except: pass
             pdf.set_text_color(101,67,33)
             pdf.cell(0,10,"Detailed Feedback:",0,1,'L')
             draw_dynamic_row(pdf, "Error Analysis", notes["Error Analysis"], 'en')
