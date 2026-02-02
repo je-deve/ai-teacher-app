@@ -299,20 +299,18 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
         model = genai.GenerativeModel("gemini-2.5-flash")
         
         if lang == "ar":
-            # البرومبت العربي: حساب المستوى بناء على الدقة والسرعة
+            # البرومبت العربي: منطق صارم للسرعة وصحة النطق
             prompt = f"""
-            أنت معلم لغة عربية خبير في تقييم الأطفال. النص المرجعي: "{ref_text}"
+            أنت معلم لغة عربية خبير. النص المرجعي: "{ref_text}"
             
             المهمة:
-            1. قيّم القراءة واستخرج الدرجات.
-            2. حدد "التقييم العام" (Overall Level) بناءً **فقط** على معيارين:
-               - "الكلمات الشائعة" (دقة الكلمات المقروءة)
-               - "الطلاقة القرائية" (السرعة)
+            1. استخرج الدرجات بدقة.
+            2. حدد "التقييم العام" بناءً على دمج (صحة النطق) و (السرعة/الطلاقة).
             
-            قاعدة التقييم (كن متساهلاً لأنهم أطفال):
-            - إذا كانت القراءة صحيحة وسريعة -> "عالي"
-            - إذا كانت القراءة صحيحة لكن بطيئة قليلاً -> "متوسط"
-            - إذا كانت القراءة مليئة بالأخطاء وبطيئة -> "ضعيف"
+            قواعد تحديد المستوى (كن واقعياً):
+            - نطق صحيح + قراءة سريعة ومترابطة -> "عالي"
+            - نطق صحيح + قراءة بطيئة أو متقطعة -> "متوسط"
+            - أخطاء في النطق أو تهجئة بطيئة جداً -> "ضعيف"
 
             التنسيق (التزم به):
             الوعي الصوتي|__/25
@@ -329,18 +327,18 @@ def gemini_analyze_audio(path, ref_text, lang="ar"):
             - (نقطة)
             """
         else:
-            # English Prompt: Logic based on Word Recognition + Fluency
+            # English Prompt: Strict logic for Accuracy + Fluency
             prompt = f"""
-            You are an expert English teacher evaluating a CHILD. Ref: "{ref_text}"
+            You are an English teacher. Ref: "{ref_text}"
             
             Task:
             1. Extract scores.
-            2. Determine "Overall Level" based **ONLY** on "Word Recognition" and "Fluency".
+            2. Determine "Overall Level" based strictly on "Pronunciation Accuracy" and "Fluency" (Speed).
             
-            Grading Rule (Be lenient for kids):
-            - Accurate & Fast -> "High"
-            - Accurate but Slow -> "Medium"
-            - Inaccurate & Slow -> "Low"
+            Grading Rules:
+            - Accurate Pronunciation + Fast/Fluent Reading -> "High"
+            - Accurate Pronunciation + Slow/Choppy Reading -> "Medium"
+            - Pronunciation Errors OR Very Slow/Spelling -> "Low"
             
             IMPORTANT: Use simple text only. No IPA symbols.
 
@@ -499,7 +497,7 @@ def analyze_ar():
         return send_file(out_name, as_attachment=True, download_name=out_name)
 
     except Exception as e:
-        return f"Err: {e}",500
+        return f"Error: {e}",500
     finally:
         if os.path.exists(fname): os.remove(fname)
 
