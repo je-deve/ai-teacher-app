@@ -67,7 +67,7 @@
     .input-group { margin-bottom: 20px; text-align: right; }
     .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--primary-brown); }
 
-    input[type="text"], textarea {
+    input[type="text"], textarea, select {
       width: 100%; padding: 14px;
       border: 2px solid #E0E0E0;
       border-radius: 10px;
@@ -77,7 +77,7 @@
       box-sizing: border-box;
     }
 
-    input:focus, textarea:focus {
+    input:focus, textarea:focus, select:focus {
       border-color: var(--gold-dark);
       background: white;
       outline: none;
@@ -172,6 +172,18 @@
       <div class="input-group">
         <label>اسم الطالب:</label>
         <input type="text" id="studentName" placeholder="أدخل اسم الطالب">
+      </div>
+
+      <div class="input-group">
+        <label>الصف الدراسي:</label>
+        <select id="studentGrade">
+          <option value="الأول الابتدائي">الأول الابتدائي</option>
+          <option value="الثاني الابتدائي">الثاني الابتدائي</option>
+          <option value="الثالث الابتدائي">الثالث الابتدائي</option>
+          <option value="الرابع الابتدائي">الرابع الابتدائي</option>
+          <option value="الخامس الابتدائي">الخامس الابتدائي</option>
+          <option value="السادس الابتدائي">السادس الابتدائي</option>
+        </select>
       </div>
 
       <div class="input-group">
@@ -305,6 +317,7 @@ function stopRecording() {
 
 async function analyze() {
   const name = document.getElementById('studentName').value.trim();
+  const grade = document.getElementById('studentGrade').value; // جلب قيمة الصف
   const text = document.getElementById('refText').value.trim();
   const status = document.getElementById('status');
   const btn = document.getElementById('analyzeBtn');
@@ -317,6 +330,7 @@ async function analyze() {
 
   const formData = new FormData();
   formData.append("name", name);
+  formData.append("grade", grade); // إرسال الصف إلى السيرفر
   formData.append("ref_text", text);
 
   if (mode === 'record') {

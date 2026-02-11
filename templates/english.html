@@ -9,7 +9,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
-/* Same CSS as before - Preserved */
 :root{
     --primary-brown:#5D4037;
     --gold-dark:#B8860B;
@@ -30,7 +29,6 @@ body{
     display:flex; align-items:center; justify-content:space-between;
     padding:0 5%; z-index:1000; box-shadow:0 2px 10px rgba(0,0,0,0.05);
 }
-.nav-left{ display:flex; align-items:center; gap:15px; }
 .nav-logo{ height:60px; }
 .nav-links a{ text-decoration:none; font-weight:700; color:var(--primary-brown); margin:0 8px; }
 .school-name{ font-size:20px; font-weight:700; color:var(--primary-brown); }
@@ -43,11 +41,11 @@ body{
 h2{ margin-bottom:30px; color:var(--primary-brown); }
 .input-group{ margin-bottom:20px; text-align:left; }
 .input-group label{ display:block; margin-bottom:8px; font-weight:600; }
-input,textarea{
+input, textarea, select{
     width:100%; padding:14px; border:2px solid #E0E0E0; border-radius:10px;
     font-family:'Cairo'; font-size:15px; background:#FAFAFA; transition:.3s; box-sizing:border-box;
 }
-input:focus,textarea:focus{ border-color:var(--gold-dark); background:white; outline:none; }
+input:focus, textarea:focus, select:focus{ border-color:var(--gold-dark); background:white; outline:none; }
 textarea{ height:110px; resize:none; }
 .tabs-container{
     background:#F5F5F5; padding:5px; border-radius:12px;
@@ -102,9 +100,10 @@ textarea{ height:110px; resize:none; }
       </div>
     </div>
     <div>
-      <span class="school-name">مدارس قدرات الأجيال العالمية</span>
+      <span class="school-name">Generations Abilities Schools</span>
     </div>
   </nav>
+
 <div class="container">
     <div class="card">
         <h2>English Reading Assessment System</h2>
@@ -112,6 +111,18 @@ textarea{ height:110px; resize:none; }
         <div class="input-group">
             <label>Student Name</label>
             <input id="studentName" placeholder="Enter student name">
+        </div>
+
+        <div class="input-group">
+            <label>Grade Level</label>
+            <select id="studentGrade">
+                <option value="Grade 1">Grade 1</option>
+                <option value="Grade 2">Grade 2</option>
+                <option value="Grade 3">Grade 3</option>
+                <option value="Grade 4">Grade 4</option>
+                <option value="Grade 5">Grade 5</option>
+                <option value="Grade 6">Grade 6</option>
+            </select>
         </div>
 
         <div class="input-group">
@@ -157,9 +168,9 @@ textarea{ height:110px; resize:none; }
 </div>
 
 <script>
-    // --- Safe Element Selection ---
     const statusBox = document.getElementById('status');
     const studentNameInput = document.getElementById('studentName');
+    const studentGradeInput = document.getElementById('studentGrade');
     const refTextInput = document.getElementById('refText');
     const recordSection = document.getElementById('recordSection');
     const uploadSection = document.getElementById('uploadSection');
@@ -178,7 +189,6 @@ textarea{ height:110px; resize:none; }
         mode = selected;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         ev.currentTarget.classList.add('active');
-
         if (selected === 'record') {
             recordSection.classList.remove('hidden');
             uploadSection.classList.add('hidden');
@@ -186,7 +196,6 @@ textarea{ height:110px; resize:none; }
             recordSection.classList.add('hidden');
             uploadSection.classList.remove('hidden');
         }
-
         audioPreview.style.display = 'none';
         statusBox.innerText = '';
     }
@@ -206,7 +215,6 @@ textarea{ height:110px; resize:none; }
             mediaRecorder.start();
             audioChunks = [];
             audioBlob = null;
-
             startTime = Date.now();
             timerDisplay.style.display = 'block';
             timerInterval = setInterval(() => {
@@ -215,10 +223,8 @@ textarea{ height:110px; resize:none; }
                 let s = (diff % 60).toString().padStart(2, '0');
                 timerDisplay.innerText = `${m}:${s}`;
             }, 1000);
-
             startBtn.classList.add('hidden');
             stopBtn.classList.remove('hidden');
-
             mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
             mediaRecorder.onstop = () => {
                 clearInterval(timerInterval);
@@ -226,13 +232,9 @@ textarea{ height:110px; resize:none; }
                 audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 audioPreview.src = URL.createObjectURL(audioBlob);
                 audioPreview.style.display = 'block';
-                
-                // Stop all tracks to release microphone
                 stream.getTracks().forEach(track => track.stop());
             };
-        } catch (err) {
-            alert("Microphone access denied or error: " + err);
-        }
+        } catch (err) { alert("Microphone access denied: " + err); }
     }
 
     function stopRecording() {
@@ -243,20 +245,20 @@ textarea{ height:110px; resize:none; }
 
     async function analyze() {
         const name = studentNameInput.value.trim();
+        const grade = studentGradeInput.value;
         const text = refTextInput.value.trim();
 
-        // 1. Validation
         if (!name || !text) {
-            statusBox.innerText = 'Please fill all fields (Name & Reference Text)';
+            statusBox.innerText = 'Please fill all fields (Name & Text)';
             statusBox.className = 'status-box status-error';
             return;
         }
 
         let fd = new FormData();
         fd.append('name', name);
+        fd.append('grade', grade); // Sending Grade to Python
         fd.append('ref_text', text);
 
-        // 2. Audio Validation
         if (mode === 'record') {
             if (!audioBlob) {
                 statusBox.innerText = 'Please record audio first';
@@ -273,38 +275,27 @@ textarea{ height:110px; resize:none; }
             fd.append('audio_upload', fileInput.files[0]);
         }
 
-        // 3. Status Update
         statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing... Please wait.';
         statusBox.className = 'status-box status-loading';
 
-        // 4. Send Request
         try {
-            const res = await fetch('/analyze_english', {
-                method: 'POST',
-                body: fd
-            });
-
+            const res = await fetch('/analyze_english', { method: 'POST', body: fd });
             if (res.ok) {
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `English_Report_${name.replace(/\s+/g, '_')}.pdf`;
-                document.body.appendChild(a); // Required for some browsers
                 a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url); // Cleanup
-                
-                statusBox.innerText = 'Report generated successfully! Download starting...';
+                statusBox.innerText = 'Report generated successfully!';
                 statusBox.className = 'status-box status-success';
             } else {
                 const msg = await res.text();
-                statusBox.innerText = 'Server Error: ' + msg;
+                statusBox.innerText = 'Error: ' + msg;
                 statusBox.className = 'status-box status-error';
             }
         } catch (error) {
-            console.error(error);
-            statusBox.innerText = 'Network Error: Failed to connect to server.';
+            statusBox.innerText = 'Network Error.';
             statusBox.className = 'status-box status-error';
         }
     }
